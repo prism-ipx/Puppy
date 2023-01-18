@@ -5,7 +5,7 @@ public enum FlushMode: Sendable {
     case manual
 }
 
-public protocol FileLoggerable: Loggerable, Sendable {
+public protocol FileLoggerable: Loggerable {
     var fileURL: URL { get }
     var filePermission: String { get }
 }

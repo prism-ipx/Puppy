@@ -14,7 +14,7 @@ final class FileRotationLoggerTests: XCTestCase {
     func testFileRotationNumbering() throws {
         let rotationFileURL = URL(fileURLWithPath: "./rotation-numbering/rotation-numbering.log").absoluteURL
         let rotationDirectoryURL = URL(fileURLWithPath: "./rotation-numbering").absoluteURL
-        let rotationConfig: RotationConfig = .init(suffixExtension: .numbering, maxFileSize: 512, maxArchivedFilesCount: 4) // // default case
+        let rotationConfig: RotationConfig = .init(suffixExtension: .numbering, maxFileSize: 512, maxArchives: 4) // // default case
         let delegate: FileRotationDelegate = .init()
         let fileRotation: FileRotationLogger = try .init("com.example.yourapp.filerotationlogger.numbering", fileURL: rotationFileURL, rotationConfig: rotationConfig, delegate: delegate)
 
@@ -32,7 +32,7 @@ final class FileRotationLoggerTests: XCTestCase {
     func testFileRotationDateUUID() throws {
         let rotationFileURL = URL(fileURLWithPath: "./rotation-date_uuid/rotation-date_uuid.log").absoluteURL
         let rotationDirectoryURL = URL(fileURLWithPath: "./rotation-date_uuid").absoluteURL
-        let rotationConfig: RotationConfig = .init(suffixExtension: .date_uuid, maxFileSize: 256, maxArchivedFilesCount: 2)
+        let rotationConfig: RotationConfig = .init(suffixExtension: .date_uuid, maxFileSize: 256, maxArchives: 2)
         let delegate: FileRotationDelegate = .init()
         let fileRotation: FileRotationLogger = try .init("com.example.yourapp.filerotationlogger.date_uuid", fileURL: rotationFileURL, rotationConfig: rotationConfig, delegate: delegate)
 
@@ -79,7 +79,7 @@ private final class FileRotationDelegate: FileRotationLoggerDelegate {
         print("didArchive! didArchiveFileURL: \(didArchiveFileURL), toFileURL: \(toFileURL)")
     }
 
-    func fileRotationLogger(_ fileRotationLogger: FileRotationLogger, didRemoveArchivedFileURL: URL) {
-        print("didRemove! didRemoveArchivedFileURL: \(didRemoveArchivedFileURL)")
+    func fileRotationLogger(_ fileRotationLogger: FileRotationLogger, didRemoveArchivesURL: URL) {
+        print("didRemove! didRemoveArchivesURL: \(didRemoveArchivesURL)")
     }
 }

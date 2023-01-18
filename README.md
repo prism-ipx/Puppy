@@ -38,7 +38,7 @@ let fileURL = URL(fileURLWithPath: "./foo.log").absoluteURL
 let file = FileLogger("com.example.yourapp.file",
                       logLevel: .info,
                       fileURL: fileURL,
-                      filePermission: "600")  // Default permission is "640". 
+                      filePermission: "600")  // Default permission is "640".
 
 var log = Puppy()
 log.add(console)
@@ -60,7 +60,7 @@ class ViewController: UIViewController {
     let fileURL = URL(fileURLWithPath: "./logs/foo.log").absoluteURL
     let rotationConfig = RotationConfig(suffixExtension: .date_uuid,
                                         maxFileSize: 10 * 1024 * 1024,
-                                        maxArchivedFilesCount: 3)
+                                        maxArchives: 3)
     let delegate = SampleFileRotationDelegate()
     let fileRotation = try! FileRotationLogger("com.example.yourapp.filerotation",
                                                 fileURL: fileURL,
@@ -82,8 +82,8 @@ class SampleFileRotationDelegate: FileRotationLoggerDelegate {
         print("didArchiveFileURL: \(didArchiveFileURL), toFileURL: \(toFileURL)")
     }
     func fileRotationLogger(_ fileRotationLogger: FileRotationLogger,
-                            didRemoveArchivedFileURL: URL) {
-        print("didRemoveArchivedFileURL: \(didRemoveArchivedFileURL)")
+                            didRemoveArchivesURL: URL) {
+        print("didRemoveArchivesURL: \(didRemoveArchivesURL)")
     }
 }
 ```
@@ -126,7 +126,7 @@ import Puppy
 let fileURL = URL(fileURLWithPath: "./server-logs/bar.log").absoluteURL
 let rotationConfig = RotationConfig(suffixExtension: .numbering,
                                     maxFileSize: 30 * 1024 * 1024,
-                                    maxArchivedFilesCount: 5)
+                                    maxArchives: 5)
 let fileRotation = try FileRotationLogger("com.example.yourapp.server",
                                           fileURL: fileURL,
                                           rotationConfig: rotationConfig)
