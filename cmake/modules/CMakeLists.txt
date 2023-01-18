@@ -1,7 +1,0 @@
-set(PUPPY_EXPORTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/PuppyExports.cmake)
-configure_file(PuppyConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/PuppyConfig.cmake)
-
-get_property(PUPPY_EXPORTS GLOBAL PROPERTY PUPPY_EXPORTS)
-export(TARGETS ${PUPPY_EXPORTS}
-  NAMESPACE Puppy::
-  FILE ${PUPPY_EXPORTS_FILE})
