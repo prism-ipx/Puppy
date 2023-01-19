@@ -74,58 +74,16 @@ extension FileLoggerable {
   #if (compiler(>=5.5.2) && !os(Windows)) || compiler(>=5.7)
   @available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 6.0, *)
   public func flush(_ url: URL) async {
-  await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-    queue.async {
-    let handle = try? FileHandle(forWritingTo: url)
-    try? handle?.synchronize()
-    try? handle?.close()
-    continuation.resume()
-    }
-  }
+		await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+			queue.async {
+			let handle = try? FileHandle(forWritingTo: url)
+			try? handle?.synchronize()
+			try? handle?.close()
+			continuation.resume()
+			}
+		}
   }
   #endif // (compiler(>=5.5.2) && !os(Windows)) || compiler(>=5.7)
-
-  func openDailyFile(_ inSubfolder: Bool = false) throws {
-			let fileDate = Calendar.current.startOfDay(for: Date())
-			var directoryURL = fileURL
-			if(inSubfolder) {
-				let folderFormatter = DateFormatter()
-				folderFormatter.dateFormat = "y-MM-dd"
-				directoryURL.appendPathComponent(folderFormatter.string(from: fileDate), isDirectory: true)
-			}
-			do {
-				try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
-				puppyDebug("created directoryURL, directoryURL: \(directoryURL)")
-			} catch {
-				throw FileError.creatingDirectoryFailed(at: directoryURL)
-			}
-
-			let fileFormatter = DateFormatter()
-			fileFormatter.dateFormat = "yMMdd"
-			let logFileURL = directoryURL.appendingPathComponent("omiswift_\(fileFormatter.string(from: fileDate)).log")
-
-			if !FileManager.default.fileExists(atPath: logFileURL.path) {
-				let successful = FileManager.default.createFile(atPath: logFileURL.path, contents: nil, attributes: [FileAttributeKey.posixPermissions: uintPermission])
-				if successful {
-					puppyDebug("succeeded in creating filePath")
-				} else {
-					throw FileError.creatingFileFailed(at: logFileURL)
-				}
-			} else {
-				puppyDebug("filePath exists, filePath: \(logFileURL.path)")
-			}
-
-			var handle: FileHandle!
-			do {
-				defer {
-					try? handle?.synchronize()
-					try? handle?.close()
-				}
-				handle = try FileHandle(forWritingTo: logFileURL)
-			} catch {
-				throw FileError.openingForWritingFailed(at: logFileURL)
-			}
-  }
 
   func openFile() throws {
   let directoryURL = fileURL.deletingLastPathComponent()
