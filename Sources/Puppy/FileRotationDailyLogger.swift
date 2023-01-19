@@ -31,9 +31,10 @@ public struct FileRotationDailyLogger: FileLoggerable {
         self.rotationConfig = rotationConfig
         self.delegate = delegate
 
-        try validateFileURL(fileURL)
-        try validateFilePermission(fileURL, filePermission: filePermission)
-        try self.openFile()
+        try validateFolderURL(fileURL)
+        try validateFolderPermission(fileURL, folderPermission: filePermission)
+        try self.openDailyFile(rotationConfig.rotationType == .dailyinsubfolder)
+				self.currentDate = Calendar.current.startOfDay(for: Date())
     }
 
     public func log(_ level: LogLevel, string: String) {
@@ -42,51 +43,8 @@ public struct FileRotationDailyLogger: FileLoggerable {
         rotateFiles()
     }
 
-    mutating func openFile() throws {
-			let fileDate = Calendar.current.startOfDay(for: Date())
-			var directoryURL = fileURL
-			if(self.rotationConfig.rotationType == .dailyinsubfolder) {
-				let folderFormatter = DateFormatter()
-				folderFormatter.dateFormat = "y-MM-dd"
-				directoryURL.appendPathComponent(folderFormatter.string(from: fileDate), isDirectory: true)
-			}
-			do {
-				try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
-				puppyDebug("created directoryURL, directoryURL: \(directoryURL)")
-			} catch {
-				throw FileError.creatingDirectoryFailed(at: directoryURL)
-			}
-
-			let fileFormatter = DateFormatter()
-			fileFormatter.dateFormat = "yMMdd"
-			let logFileURL = directoryURL.appendingPathComponent("omiswift_\(fileFormatter.string(from: fileDate)).log")
-
-			if !FileManager.default.fileExists(atPath: logFileURL.path) {
-				let successful = FileManager.default.createFile(atPath: logFileURL.path, contents: nil, attributes: [FileAttributeKey.posixPermissions: uintPermission])
-				if successful {
-					puppyDebug("succeeded in creating filePath")
-				} else {
-					throw FileError.creatingFileFailed(at: logFileURL)
-				}
-			} else {
-				puppyDebug("filePath exists, filePath: \(logFileURL.path)")
-			}
-
-			var handle: FileHandle!
-			do {
-				defer {
-					try? handle?.synchronize()
-					try? handle?.close()
-				}
-				handle = try FileHandle(forWritingTo: logFileURL)
-			} catch {
-				throw FileError.openingForWritingFailed(at: logFileURL)
-			}
-			self.currentDate = fileDate
-    }
-
     private func rotateFiles() {
-      if self.currentDate != nil && self.currentDate == Calendar.current.startOfDay(for: Date()) {
+      if currentDate != nil && self.currentDate == Calendar.current.startOfDay(for: Date()) {
         return;
       }
 
@@ -96,12 +54,15 @@ public struct FileRotationDailyLogger: FileLoggerable {
 			// Opens a new target file.
 			do {
 				puppyDebug("will openFile in rotateFiles")
-				try openFile()
+				try openDailyFile()
 			} catch {
 				print("error in openFile while rotating, error: \(error.localizedDescription)")
 			}
     }
-
+		mutating func openDailyFile() throws {
+			try openDailyFile(self.rotationConfig.rotationType == .dailyinsubfolder)
+			self.currentDate = Calendar.current.startOfDay(for: Date())
+		}
     private func ascArchivesURLs(_ fileURL: URL) -> [URL] {
         var ascArchivesURLs: [URL] = []
         do {
