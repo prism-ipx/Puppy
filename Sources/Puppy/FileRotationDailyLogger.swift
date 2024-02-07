@@ -82,7 +82,7 @@ public struct FileRotationDailyLogger: FileLoggerable {
 
   	let fileFormatter = DateFormatter()
   	fileFormatter.dateFormat = "yMMdd"
-  	self.fileURL = directoryURL.appendingPathComponent("omiswift_\(fileFormatter.string(from: fileDate)).log")
+  	self.fileURL = directoryURL.appendingPathComponent("swift_\(fileFormatter.string(from: fileDate)).log")
 
   	if !FileManager.default.fileExists(atPath: fileURL.path) {
     	let successful = FileManager.default.createFile(atPath: fileURL.path, contents: nil, attributes: [FileAttributeKey.posixPermissions: uintPermission])
