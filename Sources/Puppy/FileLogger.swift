@@ -32,6 +32,6 @@ public struct FileLogger: FileLoggerable {
     }
 
     public func log(_ level: LogLevel, string: String) {
-        append(level, string: string, flushMode: flushMode, writeMode: writeMode)
+        append(level, string: string, flushMode: flushMode, writeMode: self.writeMode)
     }
 }
