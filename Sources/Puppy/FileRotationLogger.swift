@@ -83,8 +83,8 @@ public struct FileRotationLogger: FileLoggerable {
             case .numbering:
                 archivesURL = fileURL.appendingPathExtension("1")
             case .date_uuid:
-                archivesURL = fileURL.appendingPathExtension(dateFormatter(Date(), dateFormat: "yyyyMMdd'T'HHmmssZZZZZ", timeZone: "UTC") + "_" + UUID().uuidString.lowercased())
-                //archivedFileURL = fileURL.appendingPathExtension(dateFormatter(Date(), withFormatter: self.dateFormat) + "_" + UUID().uuidString.lowercased())
+                // archivesURL = fileURL.appendingPathExtension(dateFormatter(Date(), dateFormat: "yyyyMMdd'T'HHmmssZZZZZ", timeZone: "UTC") + "_" + UUID().uuidString.lowercased())
+                archivesURL = fileURL.appendingPathExtension(dateFormatter(Date(), withFormatter: self.dateFormat) + "_" + UUID().uuidString.lowercased())
             }
             try FileManager.default.moveItem(at: fileURL, to: archivesURL)
             delegate?.fileRotationLogger(self, didArchiveFileURL: fileURL, toFileURL: archivesURL)
