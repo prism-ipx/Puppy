@@ -1,3 +1,4 @@
+@preconcurrency import Dispatch
 import Foundation
 #if canImport(Darwin)
 #elseif os(Linux)
@@ -69,12 +70,35 @@ public struct Puppy: Sendable {
     }
 
     @inlinable
-    func logMessage(_ level: LogLevel, message: String, tag: String, function: String, file: String, line: UInt, swiftLogInfo: [String: String] = ["source": ""]) {
+    public func logMessage(_ level: LogLevel, message: String, tag: String, function: String, file: String, line: UInt, swiftLogInfo: [String: String] = ["source": ""]) {
         let date = Date()
         let threadID = currentThreadID()
 
         for logger in loggers {
             logger.pickMessage(level, message: message, tag: tag, function: function, file: file, line: line, swiftLogInfo: swiftLogInfo, label: logger.label, date: date, threadID: threadID)
+        }
+    }
+
+    public func flush(_ timeout: Double = 3.0) -> WaitingResult {
+        let date = Date()
+        let threadID = currentThreadID()
+
+        let group = DispatchGroup()
+        for logger in loggers {
+            group.enter()
+            logger.flush {
+                puppyDebug("before group.leave, date: \(date), threadID: \(threadID)")
+                group.leave()
+                puppyDebug("after group.leave, date: \(date), threadID: \(threadID)")
+            }
+        }
+
+        let result = group.wait(timeout: .now() + .seconds(Int(timeout)))
+        switch result {
+        case .success:
+            return .success
+        case .timedOut:
+            return .timeout
         }
     }
 
@@ -91,6 +115,11 @@ public struct Puppy: Sendable {
         #endif // canImport(Darwin)
         return threadID
     }
+}
+
+public enum WaitingResult {
+    case success
+    case timeout
 }
 
 @inlinable

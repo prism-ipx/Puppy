@@ -94,7 +94,6 @@ Logging to multiple transports(e.g. console and syslog) as a backend for `apple/
 
 ```swift
 import Puppy
-import Logging
 
 let console = ConsoleLogger("com.example.yourapp.console")
 let syslog = SystemLogger("com.example.yourapp.syslog")
@@ -169,10 +168,16 @@ class ViewController: UIViewController {
 }
 
 struct LogFormatter: LogFormattable {
+    private let dateFormat = DateFormatter()
+
+    init() {
+        dateFormat.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZZZZZ"
+    }
+
     func formatMessage(_ level: LogLevel, message: String, tag: String, function: String,
                        file: String, line: UInt, swiftLogInfo: [String : String],
                        label: String, date: Date, threadID: UInt64) -> String {
-        let date = dateFormatter(date)
+        let date = dateFormatter(date, withFormatter: dateFormat)
         let fileName = fileName(file)
         let moduleName = moduleName(file)
         return "\(date) \(threadID) [\(level.emoji) \(level)] \(swiftLogInfo) \(moduleName)/\(fileName)#L.\(line) \(function) \(message)".colorize(level.color)

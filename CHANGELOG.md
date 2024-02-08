@@ -1,3 +1,17 @@
+## [x.y.z](https://github.com/sushichop/Puppy/releases/tag/x.y.z) (yyyy-mm-dd)
+
+- Workaround for `pod lib lint` on watchOS is no longer needed. [#86](https://github.com/sushichop/Puppy/pull/86)
+
+## [0.7.0](https://github.com/sushichop/Puppy/releases/tag/0.7.0) (2023-03-13)
+
+- Add different error handling behaviors for disk writing errors. [#75](https://github.com/sushichop/Puppy/pull/75)
+- Make `logMessage` method public. [#77](https://github.com/sushichop/Puppy/pull/77)
+- Add method to support flushing log message. [#79](https://github.com/sushichop/Puppy/pull/79)
+- Make `dateFormat` function more efficient. [#81](https://github.com/sushichop/Puppy/pull/81)
+- Update `Logging` module to 1.5.2 or later. [#82](https://github.com/sushichop/Puppy/pull/82)
+- Export `Logging` module. [#83](https://github.com/sushichop/Puppy/pull/83)
+- Use Swift 5.7.2 and Xcode 14.2. [#84](https://github.com/sushichop/Puppy/pull/84)
+
 ## [0.6.0](https://github.com/sushichop/Puppy/releases/tag/0.6.0) (2022-11-29)
 
 - Disable bitcode. [#54](https://github.com/sushichop/Puppy/pull/54)

@@ -5,9 +5,20 @@ public enum FlushMode: Sendable {
   case manual
 }
 
-public protocol FileLoggerable: Loggerable {
-  var fileURL: URL { get }
-  var filePermission: String { get }
+/// Writing the file log to the disk can fail e.g. if the disk is full.
+/// The `FileWritingErrorHandlingMode` enum specifies how errors should be handled.
+/// - assert uses assertionFailure to stop execution for debug builds and ignores failures in release builds
+/// - print only prints the error message to the standard output
+/// - force crashes for all builds, if logging fails by force trying to write the file. Default behavior, if no other option is specified
+public enum FileWritingErrorHandlingMode: Sendable {
+    case assert
+    case print
+    case force
+}
+
+public protocol FileLoggerable: Loggerable, Sendable {
+    var fileURL: URL { get }
+    var filePermission: String { get }
 }
 
 extension FileLoggerable {
@@ -156,12 +167,56 @@ extension FileLoggerable {
     }
     try? handle?.close()
     }
-    handle = try FileHandle(forWritingTo: fileURL)
-    _ = try handle?.seekToEndCompatible()
-    if let data = (string + "\r\n").data(using: .utf8) {
-    // swiftlint:disable force_try
-    try! handle?.writeCompatible(contentsOf: data)
-    // swiftlint:enable force_try
+
+    func validateFileURL(_ url: URL) throws {
+        if url.hasDirectoryPath {
+            throw FileError.isNotFile(url: url)
+        }
+    }
+
+    func validateFilePermission(_ url: URL, filePermission: String) throws {
+        let min = UInt16("000", radix: 8)!
+        let max = UInt16("777", radix: 8)!
+        if let uintPermission = UInt16(filePermission, radix: 8), uintPermission >= min, uintPermission <= max {
+        } else {
+            throw FileError.invalidPermission(at: url, filePermission: filePermission)
+        }
+    }
+
+    func append(_ level: LogLevel, string: String, flushMode: FlushMode = .always, writeMode: FileWritingErrorHandlingMode = .force) {
+        var handle: FileHandle!
+        do {
+            defer {
+                if flushMode == .always {
+                    try? handle?.synchronize()
+                }
+                try? handle?.close()
+            }
+            handle = try FileHandle(forWritingTo: fileURL)
+            _ = try handle?.seekToEndCompatible()
+            if let data = (string + "\r\n").data(using: .utf8) {
+
+                switch writeMode {
+                case .force:
+                    // swiftlint:disable force_try
+                    try! handle?.writeCompatible(contentsOf: data)
+                    // swiftlint:enable force_try
+                case .assert, .print:
+                    do {
+                        try handle?.writeCompatible(contentsOf: data)
+                    } catch {
+                        let message = "error in appending data in a file, error: \(error.localizedDescription), file: \(fileURL)"
+                        if writeMode == .assert {
+                            assertionFailure(message)
+                        } else {
+                            print(message)
+                        }
+                    }
+                }
+            }
+        } catch {
+            print("error in appending data in a file, error: \(error.localizedDescription), file: \(fileURL)")
+        }
     }
   } catch {
     print("error in appending data in a file, error: \(error.localizedDescription), file: \(fileURL)")
