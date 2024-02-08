@@ -11,7 +11,7 @@ public struct FileRotationDailyLogger: FileLoggerable {
   public let queue: DispatchQueue
   public let logLevel: LogLevel
   public let logFormat: LogFormattable?
-
+  public let inDebug: Bool
   public var fileURL: URL
   public let folderURL: URL
   public let filePermission: String
@@ -19,13 +19,14 @@ public struct FileRotationDailyLogger: FileLoggerable {
   let rotationConfig: RotationConfig
   private weak var delegate: FileRotationDailyLoggerDelegate?
 
-  public init(_ label: String, logLevel: LogLevel = .trace, logFormat: LogFormattable? = nil, folderURL: URL, filePermission: String = "640", rotationConfig: RotationConfig, delegate: FileRotationDailyLoggerDelegate? = nil) throws {
+  public init(_ label: String, logLevel: LogLevel = .trace, logFormat: LogFormattable? = nil, folderURL: URL, filePermission: String = "640", rotationConfig: RotationConfig, delegate: FileRotationDailyLoggerDelegate? = nil, inDebug : Bool = false) throws {
     self.label = label
     self.queue = DispatchQueue(label: label)
     self.logLevel = logLevel
     self.logFormat = logFormat
 	  self.folderURL = folderURL
     self.fileURL = folderURL
+    self.inDebug = inDebug
     puppyDebug("initialized, base logging folder: \(folderURL)")
     self.filePermission = filePermission
 
@@ -45,9 +46,10 @@ public struct FileRotationDailyLogger: FileLoggerable {
   }
 
   private func rotateFiles() {
-    if currentDate != nil && self.currentDate == Calendar.current.startOfDay(for: Date()) {
+    if currentDate != nil && self.currentDate == Calendar.current.startOfDay(for: Date()) && !self.inDebug {
 	    return;
     }
+    puppyDebug("Checking rotation...")
 
   	// Removes extra archives.
   	removeArchives(folderURL, maxArchives: rotationConfig.maxArchives)
@@ -108,12 +110,25 @@ public struct FileRotationDailyLogger: FileLoggerable {
   }
   private func ascArchivesURLs(_ folderURL: URL) -> [URL] {
     var ascArchivesURLs: [URL] = []
+
+  	// var directoryURL = folderURL
+  	// if(rotationConfig.rotationType == .dailyinsubfolder) {
+    // 	let fileDate = Calendar.current.startOfDay(for: Date())
+		// 	let folderFormatter = DateFormatter()
+		// 	folderFormatter.dateFormat = "y-MM-dd"
+		// 	directoryURL.appendPathComponent(folderFormatter.string(from: fileDate), isDirectory: true)
+  	// }
     do {
       let archivesDirectoryURL: URL = folderURL
-      let archivesURLs = try FileManager.default.contentsOfDirectory(atPath: archivesDirectoryURL.path)
-        .map { archivesDirectoryURL.appendingPathComponent($0) }
-        .filter { $0 != folderURL && $0.deletingPathExtension() == folderURL }
-
+      var archivesURLs:[URL]
+      if(rotationConfig.rotationType == .dailyinsubfolder) {
+        let directoryContents = try FileManager.default.contentsOfDirectory(at: archivesDirectoryURL, includingPropertiesForKeys: nil, options: [])
+        archivesURLs = directoryContents.filter{ $0.hasDirectoryPath }
+      } else {
+        archivesURLs = try FileManager.default.contentsOfDirectory(atPath: archivesDirectoryURL.path)
+          .map { archivesDirectoryURL.appendingPathComponent($0) }
+          .filter { $0 != folderURL && $0.deletingPathExtension() == folderURL }
+      }
       ascArchivesURLs = try archivesURLs.sorted {
         #if os(Windows)
         let modificationTime0 = try FileManager.default.windowsModificationTime(atPath: $0.path)
