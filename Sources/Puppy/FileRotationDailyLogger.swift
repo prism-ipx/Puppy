@@ -1,7 +1,7 @@
 @preconcurrency import Dispatch
 import Foundation
 
-@unchecked public final class FileRotationDailyLogger: FileLoggerable {
+public final class FileRotationDailyLogger: FileLoggerable {
   private var uintPermission: UInt16 {
   	return UInt16(filePermission, radix: 8)!
   }
