@@ -1,42 +1,44 @@
 @preconcurrency import Dispatch
 import Foundation
 
-@unchecked public final class FileRotationDailyLogger: FileLoggerable {
+@unchecked public class FileRotationTimeLogger: FileLoggerable  {
   private var uintPermission: UInt16 {
   	return UInt16(filePermission, radix: 8)!
   }
 
-  private var currentDate: Date? = nil
   public let label: String
   public let queue: DispatchQueue
   public let logLevel: LogLevel
   public let logFormat: LogFormattable?
-  public let inDebug: Bool
-  public var fileURL: URL
   public let folderURL: URL
+  public let folderDateFormat: String
   public let filePermission: String
+  public let rotationTime: Double
+
+  private var currentDate: Date? = nil
+  public var fileURL: URL
 
   let rotationConfig: RotationConfig
-  private weak var delegate: FileRotationDailyLoggerDelegate?
+  private weak var delegate: FileRotationTimeLoggerDelegate?
 
-  public init(_ label: String, logLevel: LogLevel = .trace, logFormat: LogFormattable? = nil, folderURL: URL, filePermission: String = "640", rotationConfig: RotationConfig, delegate: FileRotationDailyLoggerDelegate? = nil, inDebug : Bool = false) throws {
+  public init(_ label: String, logLevel: LogLevel = .trace, logFormat: LogFormattable? = nil, folderURL: URL, filePermission: String = "640", rotationConfig: RotationConfig, delegate: FileRotationTimeLoggerDelegate? = nil, folderDateFormat: String = "yyyy-MM-dd", RotationTime: Double = 60 * 24 * 24) throws {
     self.label = label
     self.queue = DispatchQueue(label: label)
     self.logLevel = logLevel
     self.logFormat = logFormat
 	  self.folderURL = folderURL
     self.fileURL = folderURL
-    self.inDebug = inDebug
-    puppyDebug("initialized, base logging folder: \(folderURL)")
     self.filePermission = filePermission
 
     self.rotationConfig = rotationConfig
     self.delegate = delegate
+    self.folderDateFormat = folderDateFormat
+    self.rotationTime = RotationTime
+    puppyDebug("Initialized, base logging folder: \(folderURL)")
 
     try validateFolderURL(folderURL)
     try validateFolderPermission(folderURL, folderPermission: filePermission)
-    try self.openDailyFile(rotationConfig.rotationType == .dailyinsubfolder)
-    self.currentDate = Calendar.current.startOfDay(for: Date())
+    try self.openDailyFile()
   }
 
   public func log(_ level: LogLevel, string: String) {
@@ -46,7 +48,7 @@ import Foundation
   }
 
   private func rotateFiles() {
-    if currentDate != nil && self.currentDate == Calendar.current.startOfDay(for: Date()) && !self.inDebug {
+    if currentDate != nil && Date().timeIntervalSince(self.currentDate!) > self.rotationTime {
 	    return;
     }
     puppyDebug("Checking rotation...")
@@ -57,21 +59,19 @@ import Foundation
   	// Opens a new target file.
   	do {
     	puppyDebug("will openFile in rotateFiles")
-    	try openDailyFile(self.rotationConfig.rotationType == .dailyinsubfolder)
+    	try self.openDailyFile()
   	} catch {
     	print("error in openFile while rotating, error: \(error.localizedDescription)")
   	}
   }
 
-  func openDailyFile(_ inSubfolder: Bool = false) throws {
-		self.currentDate = Calendar.current.startOfDay(for: Date())
-  	let fileDate = Calendar.current.startOfDay(for: Date())
+  private func openDailyFile() throws {
+		self.currentDate = Date()
   	var directoryURL = folderURL
-  	if(inSubfolder) {
-			let folderFormatter = DateFormatter()
-			folderFormatter.dateFormat = "y-MM-dd"
-			directoryURL.appendPathComponent(folderFormatter.string(from: fileDate), isDirectory: true)
-  	}
+
+    let folderFormatter = DateFormatter()
+    folderFormatter.dateFormat = self.folderDateFormat
+    directoryURL.appendPathComponent(folderFormatter.string(from: self.currentDate!), isDirectory: true)
   	do {
 			try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
 			puppyDebug("created directoryURL, directoryURL: \(directoryURL)")
@@ -80,8 +80,8 @@ import Foundation
   	}
 
   	let fileFormatter = DateFormatter()
-  	fileFormatter.dateFormat = "yMMdd"
-  	self.fileURL = directoryURL.appendingPathComponent("swift_\(fileFormatter.string(from: fileDate)).log")
+  	fileFormatter.dateFormat = "yyyyMMdd_HHmmss"
+  	self.fileURL = directoryURL.appendingPathComponent("swift_\(fileFormatter.string(from: self.currentDate!)).log")
 
   	if !FileManager.default.fileExists(atPath: fileURL.path) {
     	let successful = FileManager.default.createFile(atPath: fileURL.path, contents: nil, attributes: [FileAttributeKey.posixPermissions: uintPermission])
@@ -107,25 +107,12 @@ import Foundation
   }
   private func ascArchivesURLs(_ folderURL: URL) -> [URL] {
     var ascArchivesURLs: [URL] = []
-
-  	// var directoryURL = folderURL
-  	// if(rotationConfig.rotationType == .dailyinsubfolder) {
-    // 	let fileDate = Calendar.current.startOfDay(for: Date())
-		// 	let folderFormatter = DateFormatter()
-		// 	folderFormatter.dateFormat = "y-MM-dd"
-		// 	directoryURL.appendPathComponent(folderFormatter.string(from: fileDate), isDirectory: true)
-  	// }
     do {
       let archivesDirectoryURL: URL = folderURL
       var archivesURLs:[URL]
-      if(rotationConfig.rotationType == .dailyinsubfolder) {
-        let directoryContents = try FileManager.default.contentsOfDirectory(at: archivesDirectoryURL, includingPropertiesForKeys: nil, options: [])
-        archivesURLs = directoryContents.filter{ $0.hasDirectoryPath }
-      } else {
-        archivesURLs = try FileManager.default.contentsOfDirectory(atPath: archivesDirectoryURL.path)
-          .map { archivesDirectoryURL.appendingPathComponent($0) }
-          .filter { $0 != folderURL && $0.deletingPathExtension() == folderURL }
-      }
+      let directoryContents = try FileManager.default.contentsOfDirectory(at: archivesDirectoryURL, includingPropertiesForKeys: nil, options: [])
+      archivesURLs = directoryContents.filter{ $0.hasDirectoryPath }
+
       ascArchivesURLs = try archivesURLs.sorted {
         #if os(Windows)
         let modificationTime0 = try FileManager.default.windowsModificationTime(atPath: $0.path)
@@ -163,6 +150,6 @@ import Foundation
   }
 }
 
-public protocol FileRotationDailyLoggerDelegate: AnyObject, Sendable {
-  func fileRotationDailyLogger(_ fileRotationDailyLogger: FileRotationDailyLogger, didRemoveArchivesURL: URL)
+public protocol FileRotationTimeLoggerDelegate: AnyObject, Sendable {
+  func fileRotationDailyLogger(_ fileRotationTimeLogger: FileRotationTimeLogger, didRemoveArchivesURL: URL)
 }
