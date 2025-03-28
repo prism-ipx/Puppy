@@ -1,5 +1,4 @@
 #if canImport(Logging)
-import Foundation
 @_exported import Logging
 
 public struct PuppyLogHandler: LogHandler, Sendable {
@@ -7,12 +6,8 @@ public struct PuppyLogHandler: LogHandler, Sendable {
     public var metadata: Logger.Metadata
 
     public subscript(metadataKey key: String) -> Logger.Metadata.Value? {
-        get {
-            return metadata[key]
-        }
-        set(newValue) {
-            metadata[key] = newValue
-        }
+        get { self.metadata[key] }
+        set { self.metadata[key] = newValue }
     }
 
     private let label: String
@@ -25,41 +20,47 @@ public struct PuppyLogHandler: LogHandler, Sendable {
     }
 
     public func log(level: Logger.Level, message: Logger.Message, metadata: Logger.Metadata?, source: String, file: String, function: String, line: UInt) {
-
-        let metadata = !mergedMetadata(metadata).isEmpty ? "\(mergedMetadata(metadata))" : ""
+        let metadata = "[\(self.mergedMetadata(metadata).sortedDescriptionWithoutQuotes)]"
         let swiftLogInfo = ["label": label, "source": source, "metadata": metadata]
-        puppy.logMessage(level.toPuppy(), message: "\(message)", tag: "swiftlog", function: function, file: file, line: line, swiftLogInfo: swiftLogInfo)
+
+        self.puppy.logMessage(level.toPuppy(), message: "\(message)", tag: "swiftlog", function: function, file: file, line: line, swiftLogInfo: swiftLogInfo)
     }
 
     private func mergedMetadata(_ metadata: Logger.Metadata?) -> Logger.Metadata {
-        var mergedMetadata: Logger.Metadata
-        if let metadata = metadata {
-            mergedMetadata = self.metadata.merging(metadata, uniquingKeysWith: { _, new in new })
-        } else {
-            mergedMetadata = self.metadata
-        }
-        return mergedMetadata
+        metadata.map { self.metadata.merging($0, uniquingKeysWith: { $1 }) } ?? self.metadata
     }
 }
 
 extension Logger.Level {
     func toPuppy() -> LogLevel {
         switch self {
-        case .trace:
-            return .trace
-        case .debug:
-            return .debug
-        case .info:
-            return .info
-        case .notice:
-            return .notice
-        case .warning:
-            return .warning
-        case .error:
-            return .error
-        case .critical:
-            return .critical
+        case .trace:    .trace
+        case .debug:    .debug
+        case .info:     .info
+        case .notice:   .notice
+        case .warning:  .warning
+        case .error:    .error
+        case .critical: .critical
         }
+    }
+}
+
+private extension Logger.MetadataValue {
+    var descriptionWithoutExcessQuotes: String {
+        switch self {
+        case .array(let array): "[\(array.map(\.descriptionWithoutExcessQuotes).joined(separator: ", "))]"
+        case .dictionary(let dict): "[\(dict.sortedDescriptionWithoutQuotes)]"
+        case .string(let str): "\"\(str)\""
+        case .stringConvertible(let conv): "\"\(conv)\""
+        }
+    }
+}
+
+private extension Logger.Metadata {
+    var sortedDescriptionWithoutQuotes: String {
+        self.sorted { $0.0 < $1.0 }
+            .map { "\($0): \($1.descriptionWithoutExcessQuotes)" }
+            .joined(separator: ", ")
     }
 }
 
